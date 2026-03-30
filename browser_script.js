@@ -33,45 +33,76 @@
       sendUpdate(initialNotes);
 
       // --- [Step 2: 自动化循环系统] ---
-      let currentIndex = 0;
       let isProcessing = false;
+      const processedDetailIds = new Set(); // 专门记录已经点击过详情的 ID
 
       const randomSleep = (min, max) => new Promise(r => setTimeout(r, Math.floor(Math.random() * (max - min) + min)));
+
+      const getNoteIdFromElement = (el) => {
+        const href = el.querySelector('a.cover')?.getAttribute('href') || "";
+        // 匹配 /explore/65f... 或者其他格式的 ID
+        const match = href.match(/\/explore\/([a-zA-Z0-9]+)/);
+        return match ? match[1] : href;
+      };
 
       const startAutomation = async () => {
         if (isProcessing) return;
         isProcessing = true;
+        console.log("🚀 [Browser] 自动化循环启动...");
+
+        let consecutiveNoNewCount = 0;
 
         while (true) {
-          const notes = document.querySelectorAll('.note-item');
-          if (currentIndex >= notes.length) {
-            console.log("📍 [Browser] 当前页已处理完，滚动加载更多...");
-            window.scrollBy({ top: 800, behavior: 'smooth' });
+          const notes = Array.from(document.querySelectorAll('.note-item'));
+          
+          // 找第一个没处理过的笔记
+          let targetNote = null;
+          let targetId = "";
+          
+          for (const note of notes) {
+            const id = getNoteIdFromElement(note);
+            if (id && !processedDetailIds.has(id)) {
+              targetNote = note;
+              targetId = id;
+              break;
+            }
+          }
+
+          if (!targetNote) {
+            console.log("📍 [Browser] 当前视图中没有未处理的贴子，尝试滚动...");
+            const oldHeight = document.documentElement.scrollHeight;
+            window.scrollBy({ top: 1000, behavior: 'smooth' });
             await randomSleep(2000, 3000);
-            // 重新获取 notes，如果还是没有更多，就跳出
-            if (document.querySelectorAll('.note-item').length <= notes.length) {
-                console.log("🛑 [Browser] 没有更多贴子了，停止。");
+            
+            if (document.documentElement.scrollHeight === oldHeight) {
+              consecutiveNoNewCount++;
+            } else {
+              consecutiveNoNewCount = 0;
+            }
+
+            if (consecutiveNoNewCount > 5) {
+                console.log("🛑 [Browser] 连续多次滚动没新内容，停止自动化。");
                 break;
             }
             continue;
           }
 
-          const targetNote = notes[currentIndex];
+          consecutiveNoNewCount = 0;
           const targetAnchor = targetNote.querySelector('a.cover');
           const targetImg = targetAnchor?.querySelector('img');
           
           if (!targetAnchor) {
-            currentIndex++;
+            processedDetailIds.add(targetId); // 标记为跳过
             continue;
           }
 
-          console.log(`🚀 [Browser] 正在处理第 ${currentIndex + 1} 个贴子...`);
+          console.log(`🚀 [Browser] 正在处理笔记 ID: ${targetId} ...`);
           
           // 2. 模拟真人操作：滚动并定位
-          targetAnchor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          targetNote.scrollIntoView({ behavior: 'smooth', block: 'center' });
           await randomSleep(1000, 1500);
 
-          // 3. 执行点击：点击图片而非链接本身，防止触发 href 跳转
+          // 3. 执行点击
           const clickTarget = targetImg || targetAnchor;
           const rect = clickTarget.getBoundingClientRect();
           
@@ -93,37 +124,35 @@
           }
           
           // 4. 等待弹窗加载
-          await randomSleep(2500, 4000);
+          await randomSleep(3000, 5000);
           
-          // 随机滚动弹窗内容
-          const scroller = document.querySelector('.note-scroller');
-          if (scroller) {
-            console.log("🖱️ [Browser] 在弹窗内模拟阅读（随机滚动）...");
-            for (let i = 0; i < 3; i++) {
-              const scrollAmt = Math.floor(Math.random() * 300) + 100;
-              scroller.scrollBy({ top: scrollAmt, behavior: 'smooth' });
-              await randomSleep(800, 1500);
+          // 检查详情是否真的打开了 (通过是否存在 mask 或 close 按钮)
+          const hasModal = () => document.querySelector('.note-detail-mask') || document.querySelector('.close-circle');
+          
+          if (hasModal()) {
+            // 随机阅读逻辑
+            const scroller = document.querySelector('.note-scroller');
+            if (scroller) {
+              console.log("阅读中...");
+              for (let i = 0; i < 2; i++) {
+                const scrollAmt = Math.floor(Math.random() * 200) + 50;
+                scroller.scrollBy({ top: scrollAmt, behavior: 'smooth' });
+                await randomSleep(1000, 2000);
+              }
             }
-          }
 
-          // 如果有右箭头切换，可以点一下模拟翻页
-          const nextBtn = document.querySelector('.arrow-controller.right');
-          if (nextBtn && Math.random() > 0.5) {
-            console.log("➡️ [Browser] 点击右箭头查看下一张...");
-            nextBtn.click();
-            await randomSleep(1500, 2500);
-          }
-
-          // 4. 关闭弹窗
-          const mask = document.querySelector('.note-detail-mask');
-          const closeBtn = document.querySelector('.close-circle');
-          if (mask || closeBtn) {
-            console.log("✖️ [Browser] 关闭弹窗，进入下一个...");
+            // 关闭弹窗
+            const mask = document.querySelector('.note-detail-mask');
+            const closeBtn = document.querySelector('.close-circle');
+            console.log("✖️ [Browser] 关闭弹窗");
             (closeBtn || mask).click();
             await randomSleep(1000, 2000);
+          } else {
+            console.log("⚠️ [Browser] 弹窗似乎没打开，可能需要重试或检查点击逻辑");
           }
 
-          currentIndex++;
+          // 标记已处理
+          processedDetailIds.add(targetId);
           await randomSleep(1000, 2000);
         }
         
@@ -131,7 +160,7 @@
       };
 
       if (initialNotes.length > 0) {
-        console.log("✅ [Browser] 初始数据已就绪，启动自动化循环...");
+        console.log("✅ [Browser] 启动自动化循环...");
         startAutomation();
       }
       // --- [Step 2 End] ---
