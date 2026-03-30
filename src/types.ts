@@ -7,5 +7,6 @@ export interface XhsNote {
 
 export interface SearchUpdatePayload {
     keyword: string;
-    notes: XhsNote[];
+    notes?: XhsNote[];
+    details?: XhsNote[];
 }

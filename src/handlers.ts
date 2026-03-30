@@ -1,7 +1,7 @@
 import type { Context } from 'hono';
-import { saveNotesWithDedupe } from './storage.js';
+import { saveNotesWithDedupe, saveDetailsWithDedupe } from './storage.js';
 import { setupSearchTab } from './mcp_client.js';
-import type { SearchUpdatePayload } from './types.js';
+import type { XhsNote } from './types.js';
 
 /**
  * 状态检查处理器
@@ -11,16 +11,35 @@ export const handleStatusCheck = (c: Context) => {
 };
 
 /**
- * 实时数据推送处理器
+ * 实时笔记列表数据推送处理器
  */
-export const handleUpdate = async (c: Context) => {
+export const handleNoteUpdate = async (c: Context) => {
     try {
-        const { keyword, notes } = await c.req.json() as SearchUpdatePayload;
+        const { keyword, notes } = await c.req.json() as { keyword: string, notes: XhsNote[] };
         if (!keyword || !notes) {
             return c.text('Invalid payload', 400);
         }
-        console.log(`[接收推送] 🚀 收到关键词 "${keyword}" 的实时数据 (${notes.length} 条)`);
+        console.log(`[接收推送] 🚀 收到关键词 "${keyword}" 的笔记列表数据 (${notes.length} 条)`);
         saveNotesWithDedupe(keyword, notes);
+        return c.text('Received');
+    } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        console.error('[解析错误]', errorMessage);
+        return c.text('Invalid JSON', 400);
+    }
+};
+
+/**
+ * 实时笔记 “详情” 数据推送处理器
+ */
+export const handleDetailUpdate = async (c: Context) => {
+    try {
+        const { keyword, details } = await c.req.json() as { keyword: string, details: XhsNote[] };
+        if (!keyword || !details) {
+            return c.text('Invalid payload', 400);
+        }
+        console.log(`[接收推送] 🚀 收到关键词 "${keyword}" 的笔记详情数据 (${details.length} 条)`);
+        saveDetailsWithDedupe(keyword, details);
         return c.text('Received');
     } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : String(err);

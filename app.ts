@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { handleStatusCheck, handleUpdate, handleSearch } from './src/handlers.js';
+import { handleStatusCheck, handleNoteUpdate, handleDetailUpdate, handleSearch } from './src/handlers.js';
 
 const app = new Hono();
 const PORT = 3333;
@@ -18,7 +18,8 @@ app.use('*', cors());
 app.get('/', handleStatusCheck);
 
 // 2. Webhook 接口：接收来自浏览器脚本推送的数据
-app.post('/update', handleUpdate);
+app.post('/update/notes', handleNoteUpdate);
+app.post('/update/details', handleDetailUpdate);
 
 // 3. 搜索接口：自动打开搜索页面并注入脚本
 app.get('/search', handleSearch);
