@@ -35,9 +35,12 @@
       // --- [Step 2: 自动化循环系统] ---
       let isProcessing = false;
       const processedDetailIds = new Set(); // 专门记录已经点击过详情的 ID
-
-      // 增加速度倍率，数值越大越快 (1.0 是原速, 2.0 是双倍速)
-      const speed = 1.5; 
+      const pushedDetailInfo = new Map(); // id -> dataLength (移动到此处以便在自动化循环中判断计数)
+      
+      const maxDetails = 200; // 详情最大获取数量，达到后自动停止
+      
+      // 增加速度倍率，数值越大越快 (1.0 是原速, 2.0 是双倍速) 1.5可能已经会爆频繁
+      const speed = 1.25; 
 
       const randomSleep = (min, max) => new Promise(r => setTimeout(r, Math.floor((Math.random() * (max - min) + min) / speed)));
 
@@ -51,11 +54,18 @@
       const startAutomation = async () => {
         if (isProcessing) return;
         isProcessing = true;
-        console.log("🚀 [Browser] 自动化循环启动...");
+        console.log(`🚀 [Browser] 自动化循环启动 (目标上限: ${maxDetails})...`);
 
         let consecutiveNoNewCount = 0;
 
         while (true) {
+          // 检查是否达到采集上限
+          if (pushedDetailInfo.size >= maxDetails) {
+            console.log(`🛑 [Browser] 采集详情数量已达标 (${pushedDetailInfo.size}/${maxDetails})，正在停止程序并关闭页面...`);
+            window.close();
+            return;
+          }
+
           const notes = Array.from(document.querySelectorAll('.note-item'));
           
           // 找第一个没处理过的笔记
@@ -186,7 +196,6 @@
       const noteStore = pinia?._s?.get('note');
       if (noteStore) {
         console.log("✅ [Browser] 详情监控已激活...");
-        const pushedDetailInfo = new Map(); // id -> dataLength
         
         noteStore.$subscribe((_mutation, state) => {
           const detailMap = state.noteDetailMap || {};
