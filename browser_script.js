@@ -36,7 +36,10 @@
       let isProcessing = false;
       const processedDetailIds = new Set(); // 专门记录已经点击过详情的 ID
 
-      const randomSleep = (min, max) => new Promise(r => setTimeout(r, Math.floor(Math.random() * (max - min) + min)));
+      // 增加速度倍率，数值越大越快 (1.0 是原速, 2.0 是双倍速)
+      const speed = 1.5; 
+
+      const randomSleep = (min, max) => new Promise(r => setTimeout(r, Math.floor((Math.random() * (max - min) + min) / speed)));
 
       const getNoteIdFromElement = (el) => {
         const href = el.querySelector('a.cover')?.getAttribute('href') || "";
