@@ -145,8 +145,20 @@
             background: rgba(255, 255, 255, 0.95); border-radius: 6px;
             padding: 6px; cursor: pointer; display: flex; align-items: center;
             box-shadow: 0 4px 10px rgba(0,0,0,0.15); border: 1px solid #ff244233;
+            transition: all 0.2s;
         }
+        .xhs-check-wrap.is-active { background: #ff2442; border-color: #ff2442; }
         .xhs-check-wrap input { cursor: pointer; width: 18px; height: 18px; accent-color: #ff2442; margin: 0; }
+        .xhs-check-wrap.is-active input { filter: brightness(10); }
+
+        .no-detail-warning::after {
+            content: "⚠️ 待抓取详情";
+            position: absolute; top: 12px; right: 12px;
+            background: #ffb800; color: #fff; padding: 2px 6px;
+            font-size: 11px; font-weight: bold; border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2); pointer-events: none;
+            z-index: 100;
+        }
 
         #xhs-helper-panel {
             position: fixed; bottom: 30px; right: 30px; z-index: 10000;
@@ -187,10 +199,16 @@
 
         card.setAttribute('data-id', id);
         if (readNotes.has(id)) card.classList.add('is-read');
-        if (SELECTED_IDS.has(id)) card.classList.add('is-selected');
+        
+        const isSelected = SELECTED_IDS.has(id);
+        const note = GLOBAL_NOTES.get(id);
+        if (isSelected) {
+            card.classList.add('is-selected');
+            if (!note || !note.hasDetail) card.classList.add('no-detail-warning');
+        }
 
         const wrap = document.createElement('div');
-        wrap.className = 'xhs-check-wrap';
+        wrap.className = 'xhs-check-wrap' + (isSelected ? ' is-active' : '');
         wrap.onclick = e => e.stopPropagation();
 
         const input = document.createElement('input');
@@ -200,9 +218,11 @@
             if (e.target.checked) {
                 SELECTED_IDS.add(id);
                 card.classList.add('is-selected');
+                wrap.classList.add('is-active');
             } else {
                 SELECTED_IDS.delete(id);
                 card.classList.remove('is-selected');
+                wrap.classList.remove('is-active');
             }
             updateStats();
         });
@@ -221,13 +241,30 @@
     // 4. 面板逻辑与导出
     // ==========================================
     function updateStats() {
-        const s = document.querySelector('#xhs-s-cnt');
-        const d = document.querySelector('#xhs-d-cnt');
+        const statsEl = document.querySelector('#xhs-stat-merged');
         const b = document.querySelector('#xhs-exp');
-        const detailCount = Array.from(GLOBAL_NOTES.values()).filter(n => n.hasDetail).length;
-        if (s) s.innerText = SELECTED_IDS.size;
-        if (d) d.innerText = detailCount;
-        if (b) b.disabled = SELECTED_IDS.size === 0;
+        
+        const selectedList = Array.from(SELECTED_IDS);
+        const totalSelected = selectedList.length;
+        const withDetailSelected = selectedList.filter(id => GLOBAL_NOTES.get(id)?.hasDetail).length;
+        
+        if (statsEl) statsEl.innerText = `${withDetailSelected} / ${totalSelected}`;
+        if (b) b.disabled = totalSelected === 0;
+
+        // 刷新视图上的标记
+        document.querySelectorAll('section.note-item, .note-item, .fe-note-item').forEach(card => {
+            const id = card.dataset.id;
+            if (!id) return;
+            const note = GLOBAL_NOTES.get(id);
+            const isSelected = SELECTED_IDS.has(id);
+            const noDetail = !note || !note.hasDetail;
+
+            if (isSelected && noDetail) {
+                card.classList.add('no-detail-warning');
+            } else {
+                card.classList.remove('no-detail-warning');
+            }
+        });
     }
 
     function createPanel() {
@@ -236,8 +273,7 @@
         p.id = 'xhs-helper-panel';
         p.innerHTML = `
             <div class="helper-title">小红书数据助手</div>
-            <div class="helper-stat">当前已选中: <b id="xhs-s-cnt">0</b></div>
-            <div class="helper-stat">详情已捕获: <b id="xhs-d-cnt">0</b></div>
+            <div class="helper-stat">当前已选中: <b id="xhs-stat-merged">0 / 0</b></div>
             <button class="helper-btn export" id="xhs-exp" disabled>一键导出选中列表</button>
             <button class="helper-btn secondary" id="xhs-reset">清除全部缓存</button>
         `;
