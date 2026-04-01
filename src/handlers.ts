@@ -48,19 +48,26 @@ export const handleDetailUpdate = async (c: Context) => {
     }
 };
 
+import { GLOBAL_MAX_DETAILS } from './config.js';
+
 /**
- * 搜索并监听处理器
+ * 搜索并监听处理器 (支持 ?keyword=...&max=500)
  */
 export const handleSearch = async (c: Context) => {
     const keyword = c.req.query('keyword');
+    const maxParam = c.req.query('max');
+    
     if (!keyword) {
         return c.text('Missing keyword parameter', 400);
     }
 
+    // 优先取 URL 参数，否则取全局默认值
+    const maxCount = maxParam ? parseInt(maxParam, 10) : GLOBAL_MAX_DETAILS;
+
     try {
-        const targetUrl = await setupSearchTab(keyword);
+        const targetUrl = await setupSearchTab(keyword, maxCount);
         return c.json({
-            message: `Search initiated for keyword: ${keyword}`,
+            message: `Search initiated for keyword: ${keyword}, max: ${maxCount}`,
             url: targetUrl
         });
     } catch (err: unknown) {

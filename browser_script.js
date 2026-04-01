@@ -2,7 +2,7 @@
  * 注入浏览器的独立核心脚本
  * 该函数会被转换成字符串后，通过 MCP 的 evaluate_script 注入控制台运行
  */
-(keyword) => {
+(keyword, maxCount) => {
   const tryHook = () => {
     const app = document.querySelector('#app')?.__vue_app__;
     const pinia = app?.config?.globalProperties?.$pinia;
@@ -37,7 +37,7 @@
       const processedDetailIds = new Set(); // 专门记录已经点击过详情的 ID
       const pushedDetailInfo = new Map(); // id -> dataLength (移动到此处以便在自动化循环中判断计数)
       
-      const maxDetails = 200; // 详情最大获取数量，达到后自动停止
+      const maxDetails = maxCount || 200; // 详情最大获取数量，达到后自动停止
       
       // 增加速度倍率，数值越大越快 (1.0 是原速, 2.0 是双倍速) 1.5可能已经会爆频繁
       const speed = 1.25; 

@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { handleStatusCheck, handleNoteUpdate, handleDetailUpdate, handleSearch } from './src/handlers.js';
 
+import { GLOBAL_MAX_DETAILS } from './src/config.js';
+
 const app = new Hono();
 const PORT = 3333;
 

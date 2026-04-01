@@ -43,7 +43,7 @@ export async function runMcpAction(task: (client: Client) => Promise<void>) {
 /**
  * 注入指定关键词的监听脚本到新的搜索页面。
  */
-export async function setupSearchTab(keyword: string) {
+export async function setupSearchTab(keyword: string, maxDetails: number = 200) {
     const targetUrl = `https://www.xiaohongshu.com/search_result/?keyword=${encodeURIComponent(keyword)}&source=web_search_result_notes&type=51`;
     const injectionScriptPath = path.join(process.cwd(), 'browser_script.js');
     const injectionScript = fs.readFileSync(injectionScriptPath, 'utf8');
@@ -59,9 +59,9 @@ export async function setupSearchTab(keyword: string) {
         
         await client.callTool({
             name: "evaluate_script",
-            arguments: { function: `(${injectionScript})("${keyword}")` }
+            arguments: { function: `(${injectionScript})("${keyword}", ${maxDetails})` }
         });
-        console.log("[MCP] 脚本注入成功。");
+        console.log("[MCP] 脚本注入成功，目标上限: " + maxDetails);
     }).catch(err => {
         console.error("[MCP Error]", err);
     });
