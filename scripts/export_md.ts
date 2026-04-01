@@ -47,6 +47,15 @@ async function exportJsonToMd(inputPath: string) {
     const data = JSON.parse(fs.readFileSync(absolutePath, "utf-8"));
     const items: NoteDetail[] = Array.isArray(data) ? data : [data];
     
+    // 获取数字计数的简单辅助函数
+    const getCount = (count: string | number | undefined) => {
+      if (count === undefined) return 0;
+      return typeof count === "string" ? parseInt(count, 10) : count;
+    };
+
+    // 默认按照收藏数降序排序笔记
+    items.sort((a, b) => getCount(b.interactInfo?.collectedCount) - getCount(a.interactInfo?.collectedCount));
+
     let mdContent = "";
 
     for (const item of items) {
@@ -58,8 +67,10 @@ async function exportJsonToMd(inputPath: string) {
 
       // 仅处理有内容的评论列表
       const commentList = comments?.list || [];
-      // 过滤点赞数大于 0 的评论
-      const filteredComments = commentList.filter(c => isLiked(c.likeCount));
+      // 过滤点赞数大于 0 的评论，并按点赞数排序
+      const filteredComments = commentList
+        .filter(c => isLiked(c.likeCount))
+        .sort((a, b) => getCount(b.likeCount) - getCount(a.likeCount));
 
       if (filteredComments.length > 0) {
         mdContent += `## 热门评论\n\n`;
@@ -67,9 +78,11 @@ async function exportJsonToMd(inputPath: string) {
           mdContent += `### ${comment.userInfo?.nickname || "未知用户"}: ${comment.content} (赞: ${comment.likeCount})\n`;
           
           if (comment.subComments && comment.subComments.length > 0) {
-            // 子评论也按需展示，不强求子评论必须有点赞（因为它们是针对父评论的补充）
-            // 但如果用户说“没有点赞就过滤掉”，可能也包含子评论。这里也过滤一下子评论。
-            const filteredSubComments = comment.subComments.filter(s => isLiked(s.likeCount));
+            // 子评论也按需展示，过滤点赞数大于 0 的并按点赞数排序
+            const filteredSubComments = comment.subComments
+              .filter(s => isLiked(s.likeCount))
+              .sort((a, b) => getCount(b.likeCount) - getCount(a.likeCount));
+              
             for (const sub of filteredSubComments) {
               mdContent += `- **${sub.userInfo?.nickname || "未知用户"}**: ${sub.content} (赞: ${sub.likeCount})\n`;
             }
@@ -82,11 +95,11 @@ async function exportJsonToMd(inputPath: string) {
 
     const outputPath = absolutePath.replace(".json", ".md");
     fs.writeFileSync(outputPath, mdContent.trim(), "utf-8");
-    console.log(`成功导出到: ${outputPath} (已过滤无点赞评论)`);
+    console.log(`成功导出到: ${outputPath} (已按热度排序并过滤无点赞评论)`);
   } catch (error) {
     console.error("导出失败:", error);
   }
 }
 
-const targetFile = process.argv[2] || "data/卡什_details.json";
+const targetFile = process.argv[2] || "data/以佛所_details.json";
 exportJsonToMd(targetFile);
